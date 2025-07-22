@@ -1,47 +1,48 @@
-// URL de la API
-const API_URL = 'https://fakestoreapi.com/products';
-
-// Contenedor de productos
+const API_URL = 'http://localhost:8080/api/productos';
+const API_PEDIDOS_URL = 'http://localhost:8080/api/pedidos';
 const productosDiv = document.getElementById('productos');
 
 // Cargar productos
-if (productosDiv) {
-    async function cargarProductos() {
-        try {
-            const response = await fetch(API_URL);
-            const productos = await response.json();
+async function cargarProductos(categoria = null) {
+    try {
+        const response = await fetch(API_URL);
+        const productos = await response.json();
 
-            productos.forEach(producto => {
-                // Crear tarjeta
-                const productoCard = document.createElement('div');
-                productoCard.classList.add('producto-card');
-                productoCard.innerHTML = `
-                    <img src="${producto.image}" alt="${producto.title}">
-                    <h4>${producto.title}</h4>
-                    <p>Precio: $${producto.price}</p>
-                    <p>Categoría: ${producto.category}</p>
-                    <p>Puntuación: ${producto.rating?.rate || 'N/A'}</p>
-                    <button 
-                        data-id="${producto.id}" 
-                        data-title="${producto.title}" 
-                        data-price="${producto.price}" 
-                        data-image="${producto.image}">
-                        Agregar al carrito
-                    </button>
-                `;
+        if (!productosDiv) return; // Evitar error si no estamos en productos.html
 
-                productoCard.querySelector('button').addEventListener('click', agregarProducto);
+        productosDiv.innerHTML = '';
 
-                productosDiv.appendChild(productoCard);
-            });
-        } catch (error) {
-            console.error('Error al cargar productos:', error);
-        }
+        const productosFiltrados = categoria && categoria.toLowerCase() !== 'todas'
+            ? productos.filter(p => p.categoria?.nombre === categoria)
+            : productos;
+
+        productosFiltrados.forEach(producto => {
+            const productoCard = document.createElement('div');
+            productoCard.classList.add('producto-card');
+            productoCard.innerHTML = `
+                <img src="${producto.imagenUrl}" alt="${producto.nombre}">
+                <h4>${producto.nombre}</h4>
+                <p>${producto.descripcion}</p>
+                <p>Precio: $${producto.precio}</p>
+                <p>Categoría: ${producto.categoria?.nombre || 'Sin categoría'}</p>
+                <button 
+                    data-id="${producto.id}" 
+                    data-title="${producto.nombre}" 
+                    data-price="${producto.precio}" 
+                    data-image="${producto.imagenUrl}">
+                    Agregar al carrito
+                </button>
+            `;
+
+            productoCard.querySelector('button').addEventListener('click', agregarProducto);
+            productosDiv.appendChild(productoCard);
+        });
+    } catch (error) {
+        console.error('Error al cargar productos:', error);
     }
-    cargarProductos();
 }
 
-// Agregar productos al carrito
+// Función agregar al carrito
 function agregarProducto(event) {
     const boton = event.target;
     const id = boton.getAttribute('data-id');
@@ -64,159 +65,171 @@ function agregarProducto(event) {
     actualizarContadorCarrito();
 }
 
-// Actualizar el contador del carrito en el nav
+// Contador carrito
 function actualizarContadorCarrito() {
     const carrito = JSON.parse(localStorage.getItem('carrito')) || [];
     const cantidadProductos = carrito.reduce((total, producto) => total + producto.cantidad, 0);
-
     const carritoLink = document.getElementById('carrito-link');
+
     if (carritoLink) {
         carritoLink.textContent = `Carrito (${cantidadProductos})`;
     }
 }
 
-// Actualizar el carrito completo
-function actualizarCarrito() {
-    const carrito = JSON.parse(localStorage.getItem('carrito')) || [];
-    const listaCarrito = document.getElementById('lista-carrito');
-    const totalProductos = document.getElementById('total-productos');
-    const precioTotal = document.getElementById('precio-total');
+// Mostrar carrito en carrito.html
+function mostrarCarrito() {
+    const listaCarritoDiv = document.getElementById('lista-carrito');
+    const totalProductosSpan = document.getElementById('total-productos');
+    const precioTotalSpan = document.getElementById('precio-total');
 
-    if (listaCarrito) {
-        listaCarrito.innerHTML = '';
+    if (!listaCarritoDiv || !totalProductosSpan || !precioTotalSpan) return;
 
-        let total = 0;
-        let cantidadProductos = 0;
+    let carrito = JSON.parse(localStorage.getItem('carrito')) || [];
+    listaCarritoDiv.innerHTML = '';
 
-        carrito.forEach(producto => {
-            // Crear tarjeta
-            const productoCard = document.createElement('div');
-            productoCard.classList.add('producto-card');
-            productoCard.innerHTML = `
-                <img src="${producto.image}" alt="${producto.title}">
-                <h4>${producto.title}</h4>
-                <p>Precio: $${producto.price}</p>
-                <p>Cantidad: ${producto.cantidad}</p>
-                <div>
-                    <button class="disminuir" data-id="${producto.id}">-</button>
-                    <button class="aumentar" data-id="${producto.id}">+</button>
-                    <button class="eliminar" data-id="${producto.id}">Eliminar</button>
-                </div>
+    let totalProductos = 0;
+    let precioTotal = 0;
+
+    carrito.forEach(producto => {
+        totalProductos += producto.cantidad;
+        precioTotal += producto.price * producto.cantidad;
+
+        const itemDiv = document.createElement('div');
+        itemDiv.classList.add('item-carrito');
+        itemDiv.innerHTML = `
+            <p><strong>${producto.title}</strong></p>
+            <p>Cantidad: ${producto.cantidad}</p>
+            <p>Precio unitario: $${producto.price.toFixed(2)}</p>
+            <p>Subtotal: $${(producto.price * producto.cantidad).toFixed(2)}</p>
+        `;
+        listaCarritoDiv.appendChild(itemDiv);
+    });
+
+    totalProductosSpan.textContent = totalProductos;
+    precioTotalSpan.textContent = precioTotal.toFixed(2);
+}
+
+// Vaciar carrito
+const botonVaciarCarrito = document.getElementById('vaciar-carrito');
+if (botonVaciarCarrito) {
+    botonVaciarCarrito.addEventListener('click', () => {
+        localStorage.removeItem('carrito');
+        mostrarCarrito();
+        actualizarContadorCarrito();
+    });
+}
+
+// Realizar pedido: enviar al backend
+const botonRealizarPedido = document.getElementById('realizar-pedido');
+if (botonRealizarPedido) {
+    botonRealizarPedido.addEventListener('click', async () => {
+        const carrito = JSON.parse(localStorage.getItem('carrito')) || [];
+        if (carrito.length === 0) {
+            alert('El carrito está vacío.');
+            return;
+        }
+
+        const itemsParaPedido = carrito.map(p => ({
+            nombreProducto: p.title,
+            cantidad: p.cantidad,
+            precioUnitario: p.price
+        }));
+
+        try {
+            const response = await fetch(API_PEDIDOS_URL, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(itemsParaPedido)
+            });
+
+            if (!response.ok) {
+                const errorData = await response.json();
+                alert('Error al realizar pedido: ' + (errorData.message || response.statusText));
+                return;
+            }
+
+            const pedidoCreado = await response.json();
+            alert('Pedido realizado con éxito. Total: $' + pedidoCreado.montoTotal.toFixed(2));
+            localStorage.removeItem('carrito');
+            mostrarCarrito();
+            actualizarContadorCarrito();
+
+        } catch (error) {
+            console.error('Error al realizar pedido:', error);
+            alert('Error al realizar pedido, intente nuevamente.');
+        }
+    });
+}
+
+// Cargar y mostrar pedidos en pedidos.html
+async function cargarPedidos() {
+    const pedidosDiv = document.getElementById('pedidos');
+    if (!pedidosDiv) return;
+
+    try {
+        const response = await fetch(API_PEDIDOS_URL);
+        if (!response.ok) {
+            pedidosDiv.textContent = 'Error al cargar los pedidos.';
+            return;
+        }
+
+        const pedidos = await response.json();
+
+        if (pedidos.length === 0) {
+            pedidosDiv.textContent = 'No hay pedidos realizados.';
+            return;
+        }
+
+        pedidosDiv.innerHTML = '';
+
+        pedidos.forEach(pedido => {
+            const pedidoDiv = document.createElement('div');
+            pedidoDiv.classList.add('pedido');
+
+            // Fecha formateada
+            const fecha = new Date(pedido.fecha).toLocaleString('es-AR', {
+                day: '2-digit',
+                month: '2-digit',
+                year: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit'
+            });
+
+            let itemsHtml = '';
+            pedido.items.forEach(item => {
+                itemsHtml += `
+                    <li>${item.nombreProducto} - Cantidad: ${item.cantidad} - Precio unitario: $${item.precioUnitario.toFixed(2)}</li>
+                `;
+            });
+
+            pedidoDiv.innerHTML = `
+                <h3>Pedido #${pedido.id} - Fecha: ${fecha}</h3>
+                <ul>${itemsHtml}</ul>
+                <p><strong>Total: $${pedido.montoTotal.toFixed(2)}</strong></p>
+                <hr>
             `;
 
-            // Agregar eventos a los botones
-            productoCard.querySelector('.aumentar').addEventListener('click', () => aumentarProducto(producto.id));
-            productoCard.querySelector('.disminuir').addEventListener('click', () => disminuirProducto(producto.id));
-            productoCard.querySelector('.eliminar').addEventListener('click', () => eliminarProducto(producto.id));
-
-            listaCarrito.appendChild(productoCard);
-
-            total += producto.price * producto.cantidad;
-            cantidadProductos += producto.cantidad;
+            pedidosDiv.appendChild(pedidoDiv);
         });
 
-        totalProductos.textContent = cantidadProductos;
-        precioTotal.textContent = total.toFixed(2);
-    }
-
-    actualizarContadorCarrito();
-}
-
-// Aumentar la cantidad de un producto
-function aumentarProducto(idProducto) {
-    const carrito = JSON.parse(localStorage.getItem('carrito')) || [];
-    const producto = carrito.find(prod => prod.id === idProducto);
-
-    if (producto) {
-        producto.cantidad += 1;
-        localStorage.setItem('carrito', JSON.stringify(carrito));
-        actualizarCarrito();
+    } catch (error) {
+        console.error('Error al cargar pedidos:', error);
+        pedidosDiv.textContent = 'Error al cargar los pedidos.';
     }
 }
 
-// Disminuir la cantidad de un producto
-function disminuirProducto(idProducto) {
-    let carrito = JSON.parse(localStorage.getItem('carrito')) || [];
-    const producto = carrito.find(prod => prod.id === idProducto);
-
-    if (producto && producto.cantidad > 1) {
-        producto.cantidad -= 1;
-    } else {
-        carrito = carrito.filter(prod => prod.id !== idProducto);
-    }
-
-    localStorage.setItem('carrito', JSON.stringify(carrito));
-    actualizarCarrito();
-}
-
-// Eliminar un producto del carrito
-function eliminarProducto(idProducto) {
-    let carrito = JSON.parse(localStorage.getItem('carrito')) || [];
-    carrito = carrito.filter(producto => producto.id !== idProducto);
-
-    localStorage.setItem('carrito', JSON.stringify(carrito));
-    actualizarCarrito();
-}
-
-// Vaciar el carrito
-const vaciarCarritoBtn = document.getElementById('vaciar-carrito');
-if (vaciarCarritoBtn) {
-    vaciarCarritoBtn.addEventListener('click', () => {
-        localStorage.removeItem('carrito');
-        actualizarCarrito();
-    });
-}
-
-// Realizar pedido
-const realizarPedidoBtn = document.getElementById('realizar-pedido');
-if (realizarPedidoBtn) {
-    realizarPedidoBtn.addEventListener('click', () => {
-        localStorage.removeItem('carrito');
-        actualizarCarrito();
-        alert('¡Compra realizada con éxito! Recibirá un email con los detalles.');
-    });
-}
-
-// Actualizar el contador al cargar la página
+// Iniciar al cargar la página
 document.addEventListener('DOMContentLoaded', () => {
+    cargarProductos();
     actualizarContadorCarrito();
-    if (document.getElementById('lista-carrito')) {
-        actualizarCarrito();
-    }
-});
+    mostrarCarrito();
+    cargarPedidos(); // Carga pedidos si estamos en pedidos.html
 
-
-// validar formulario
-if (window.location.pathname.includes("contacto.html")) {
-    document.getElementById('contactenos').addEventListener('submit', function(event) {
-        let isValid = true;
-
-        // Validar nombre
-        if (document.getElementById('nombre').value.trim() === "") {
-            alert("El nombre es obligatorio.");
-            isValid = false;
-        }
-
-        // Validar el correo
-        const correo = document.getElementById('correo').value;
-        const correoRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-        if (correo.trim() === "") {
-            alert("El correo electrónico es obligatorio.");
-            isValid = false;
-        } else if (!correoRegex.test(correo)) {
-            alert("Por favor, ingresa un correo electrónico válido.");
-            isValid = false;
-        }
-
-        // Validar mensaje
-        if (document.getElementById('mensaje').value.trim() === "") {
-            alert("El mensaje es obligatorio.");
-            isValid = false;
-        }
-
-        // Si hay errores, no se manda el formulario
-        if (!isValid) {
-            event.preventDefault();
-        }
+    const botonesCategoria = document.querySelectorAll('.categorias button');
+    botonesCategoria.forEach(boton => {
+        boton.addEventListener('click', () => {
+            const categoria = boton.getAttribute('data-categoria');
+            cargarProductos(categoria.toLowerCase() === 'todas' ? null : categoria);
+        });
     });
-}
+});

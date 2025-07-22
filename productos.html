@@ -24,12 +24,24 @@
 
     <main>
         <section>
-            <h2>Productos</h2>
+            <h2>
+                Productos
+                <a href="admin-productos.html" style="font-size: 0.6em; margin-left: 10px;">(Administrar)</a>
+            </h2>
+
+            <!-- Nueva sección de categorías -->
+            <div class="categorias" style="margin-bottom: 20px;">
+                <h3>Categorías</h3>
+                <button data-categoria="Perfumes">Perfumes</button>
+                <button data-categoria="Cosméticos">Cosméticos</button>
+                <button data-categoria="Todas">Todas</button>
+            </div>
 
             <div id="productos"></div>
             <button><a href="carrito.html">Ir al carrito</a></button>
         </section>
     </main>
+
 
     <footer>
         <p>&copy; 2024 Opal Beauty - Todos los derechos reservados.</p>

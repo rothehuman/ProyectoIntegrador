@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Opal Beauty - Productos</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Delius&family=Montserrat:wght@300&family=Poppins:wght@100;400&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <header>
+        <h1>Opal Beauty</h1>
+        <nav>
+            <ul>
+                <li><a href="index.html">Inicio</a></li>
+                <li><a href="productos.html">Productos</a></li>
+                <li><a href="contacto.html">Contacto</a></li>
+                <li><a href="carrito.html" id="carrito-link">Carrito</a></li>
+            </ul>
+        </nav>
+    </header>
+  <main>
+    <section>
+      <h2>Administrar Productos</h2>
+
+      <button onclick="location.href='formulario-producto.html'">Agregar nuevo producto</button>
+
+      <div id="admin-productos" class="productos-grid"></div>
+    </section>
+  </main>
+
+  <footer>
+    <p>&copy; 2024 Opal Beauty - Todos los derechos reservados.</p>
+  </footer>
+
+  <script>
+    const contenedor = document.getElementById("admin-productos");
+
+    // Función para cargar productos
+    function cargarProductos() {
+      contenedor.innerHTML = ''; // limpiar antes de cargar
+
+      fetch("http://localhost:8080/api/productos")
+        .then(res => {
+          if (!res.ok) throw new Error('Error al cargar productos');
+          return res.json();
+        })
+        .then(productos => {
+          productos.forEach(producto => {
+            const card = document.createElement("div");
+            card.className = "producto-card";
+            card.innerHTML = `
+              <img src="${producto.imagenUrl}" alt="${producto.nombre}" />
+              <h3>${producto.nombre}</h3>
+              <p><strong>Stock:</strong> ${producto.cantidadEnStock}</p>
+
+              <button onclick="eliminarProducto(${producto.id})">Eliminar producto</button>
+
+              <div style="margin-top: 10px;">
+                <input type="number" id="stock-${producto.id}" placeholder="Cantidad a agregar" style="width: 150px;"/>
+                <button onclick="agregarStock(${producto.id})">Agregar stock</button>
+              </div>
+            `;
+            contenedor.appendChild(card);
+          });
+        })
+        .catch(error => {
+          alert(error.message);
+        });
+    }
+
+    // Función para eliminar producto
+    function eliminarProducto(id) {
+      if (confirm("¿Estás seguro de eliminar este producto?")) {
+        fetch(`http://localhost:8080/api/productos/${id}`, {
+          method: "DELETE"
+        })
+        .then(res => {
+          if (res.ok) {
+            alert('Producto eliminado');
+            cargarProductos();
+          } else {
+            alert('Error al eliminar producto');
+          }
+        })
+        .catch(() => alert('Error de red al eliminar producto'));
+      }
+    }
+
+    // Función para agregar stock
+    function agregarStock(id) {
+      const input = document.getElementById(`stock-${id}`);
+      const cantidad = parseInt(input.value);
+      if (isNaN(cantidad) || cantidad <= 0) {
+        alert("Ingrese una cantidad válida");
+        return;
+      }
+
+      fetch(`http://localhost:8080/api/productos/${id}`)
+        .then(res => {
+          if (!res.ok) throw new Error('No se encontró el producto');
+          return res.json();
+        })
+        .then(producto => {
+          producto.cantidadEnStock += cantidad;
+
+          const productoActualizar = {
+            id: producto.id,
+            nombre: producto.nombre,
+            descripcion: producto.descripcion,
+            precio: producto.precio,
+            imagenUrl: producto.imagenUrl,
+            cantidadEnStock: producto.cantidadEnStock,
+            categoria: {
+              id: producto.categoria?.id
+            }
+          };
+
+          fetch(`http://localhost:8080/api/productos/${id}`, {
+            method: "PUT",
+            headers: {
+              "Content-Type": "application/json"
+            },
+            body: JSON.stringify(productoActualizar)
+          })
+          .then(res => {
+            if (res.ok) {
+              alert("Stock actualizado correctamente");
+              cargarProductos();
+            } else {
+              alert("Error al actualizar el stock");
+            }
+          })
+          .catch(() => alert("Error de red al actualizar stock"));
+        })
+        .catch(error => alert(error.message));
+    }
+
+    // Cargar productos al inicio
+    document.addEventListener('DOMContentLoaded', cargarProductos);
+  </script>
+</body>
+</html>

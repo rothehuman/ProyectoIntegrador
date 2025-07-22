@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Opal Beauty - Agregar Producto</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <header>
+    <h1>Opal Beauty</h1>
+    <nav>
+      <ul>
+        <li><a href="index.html">Inicio</a></li>
+        <li><a href="productos.html">Productos</a></li>
+        <li><a href="admin-productos.html">Administrar Productos</a></li>
+        <li><a href="contacto.html">Contacto</a></li>
+      </ul>
+    </nav>
+  </header>
+
+  <main>
+    <section>
+      <h2>Agregar Nuevo Producto</h2>
+
+      <form id="form-agregar-producto">
+        <label for="nombre">Nombre:</label><br />
+        <input type="text" id="nombre" name="nombre" required /><br />
+
+        <label for="descripcion">Descripción:</label><br />
+        <textarea id="descripcion" name="descripcion" rows="3" required></textarea><br />
+
+        <label for="categoria">Categoría:</label><br />
+        <select id="categoria" name="categoria" required>
+          <option value="">Seleccionar categoría</option>
+          <option value="1">Perfumes</option>
+          <option value="2">Cosméticos</option>
+        </select><br />
+
+        <label for="precio">Precio:</label><br />
+        <input type="number" step="0.01" id="precio" name="precio" required /><br />
+
+        <label for="imagenUrl">URL de la Imagen:</label><br />
+        <input type="url" id="imagenUrl" name="imagenUrl" required /><br />
+
+        <label for="cantidadEnStock">Cantidad en Stock:</label><br />
+        <input type="number" id="cantidadEnStock" name="cantidadEnStock" required /><br />
+
+        <button type="submit">Agregar Producto</button>
+      </form>
+    </section>
+  </main>
+
+  <footer>
+    <p>&copy; 2024 Opal Beauty - Todos los derechos reservados.</p>
+  </footer>
+
+  <script>
+    const form = document.getElementById('form-agregar-producto');
+
+    form.addEventListener('submit', function(e) {
+      e.preventDefault();
+
+      const producto = {
+        nombre: form.nombre.value.trim(),
+        descripcion: form.descripcion.value.trim(),
+        precio: parseFloat(form.precio.value),
+        imagenUrl: form.imagenUrl.value.trim(),
+        cantidadEnStock: parseInt(form.cantidadEnStock.value),
+        categoria: { id: parseInt(form.categoria.value) }
+      };
+
+      fetch('http://localhost:8080/api/productos', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(producto)
+      })
+      .then(res => {
+        if (res.ok) {
+          alert('Producto agregado con éxito');
+          window.location.href = 'admin-productos.html';
+        } else {
+          alert('Error al agregar el producto');
+        }
+      })
+      .catch(() => alert('Error de conexión con el servidor'));
+    });
+  </script>
+</body>
+</html>
